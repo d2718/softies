@@ -4,13 +4,14 @@ Argument parsing and configutation.
 use std::{
     convert::TryFrom,
     path::PathBuf,
+    time::SystemTime,
 };
 
 use clap::Parser;
 use globset::Glob;
 use regex::bytes::RegexSet;
 
-use crate::types::*;
+use crate::{times, types::*};
 
 /// A more forgiving version of find; it works just fine.
 #[derive(Debug, Parser)]
@@ -35,6 +36,14 @@ struct OptArgs {
     /// Match only against specified types [default is all].
     #[arg(short, long = "type", name = "TYPE")]
     types: Vec<String>,
+
+    /// Match only files modified more recently than <START>.
+    #[arg(long, name = "START")]
+    mod_after: Option<String>,
+
+    /// Match only files last modified before <END>.
+    #[arg(long, name = "END")]
+    mod_before: Option<String>,
 
     /// Print absolute paths. [default: relative to BASE]
     #[arg(short, long)]
@@ -63,7 +72,13 @@ pub struct Opts {
     pub errors: bool,
     /// Directory entry types against which to match. Should default
     /// to _all_ types if this is empty.
-    pub types: Vec<EType>
+    pub types: Vec<EType>,
+    /// Match only files with a modification time after this.
+    /// (Should default to no lower limit.)
+    pub mod_after: Option<SystemTime>,
+    /// Match only files with a modification time before this.
+    /// (Should default to no upper limit.)
+    pub mod_before: Option<SystemTime>,
 }
 
 impl Opts {
@@ -94,6 +109,20 @@ impl Opts {
                 let r = EType::try_from(s.as_str());
                 r
             }).collect::<Result<Vec<_>, _>>()?;
+        
+        let mod_after = match oa.mod_after {
+            None => None,
+            Some(timestamp) => Some(times::parse_time(&timestamp)?),
+        };
+        let mod_before = match oa.mod_before {
+            None => None,
+            Some(timestamp) => Some(times::parse_time(&timestamp)?),
+        };
+        if let (Some(a), Some(b)) = (mod_after, mod_before) {
+            if a >= b {
+                return Err("--mod-after must be earlier than --mod-before to get any results".into());
+            }
+        }
 
         opts.patterns = patterns;
         opts.base = PathBuf::from(oa.base);
@@ -101,6 +130,8 @@ impl Opts {
         opts.full = oa.full;
         opts.errors = oa.errors;
         opts.types = types;
+        opts.mod_after = mod_after;
+        opts.mod_before = mod_before;
 
         Ok(opts)
     }

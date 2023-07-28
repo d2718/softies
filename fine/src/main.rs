@@ -1,4 +1,5 @@
 mod opt;
+pub mod times;
 pub mod types;
 
 use std::{
@@ -80,6 +81,37 @@ fn walk_and_check(opts: &Opts) -> Result<(), Box<dyn Error>> {
         if let Some(types) = ok_types {
             if !ent.file_type().is_one(types) {
                 continue;
+            }
+        }
+
+        if opts.mod_after.is_some() || opts.mod_before.is_some() {
+            let meta = match (ent.metadata(), opts.errors) {
+                (Ok(meta), _) => meta,
+                (Err(e), true) => {
+                    eprintln!("{}", &e);
+                    continue;
+                },
+                (Err(_), false) => continue,
+            };
+            let modtime = match (meta.modified(), opts.errors) {
+                (Ok(mtime), _) => mtime,
+                (Err(e), true) => {
+                    eprintln!("{}", &e);
+                    continue;
+                },
+                (Err(_), false) => continue,
+            };
+            
+
+            if let Some(t) = opts.mod_after {
+                if modtime <= t {
+                    continue;
+                }
+            }
+            if let Some(t) = opts.mod_before {
+                if modtime >= t {
+                    continue;
+                }
             }
         }
 

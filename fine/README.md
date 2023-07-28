@@ -1,7 +1,7 @@
 # fine
 
 ```text
-A more forgiving version of find; it works just fine
+A more forgiving version of the `find` utility; it works just fine.
 
 Usage: fine [OPTIONS] [PATTERN]...
 
@@ -9,14 +9,16 @@ Arguments:
   [PATTERN]...  The pattern(s) to match file paths against
 
 Options:
-  -d, --dir <BASE>   Base directory in which to search [default: .]
-  -r, --regex        Use regex (instead of glob) matching
-  -f, --full         Match any part of the path, not just the filename
-  -t, --type <TYPE>  Match only against specified types [default is all]
-  -a, --absolute     Print absolute paths. [default: relative to BASE]
-  -e, --errors       Show access errors (default is to ignore them)
-  -h, --help         Print help
-  -V, --version      Print version
+  -d, --dir <BASE>         Base directory in which to search [default: .]
+  -r, --regex              Use regex (instead of glob) matching
+  -f, --full               Match any part of the path, not just the filename
+  -t, --type <TYPE>        Match only against specified types [default is all]
+      --mod-after <START>  Match only files modified more recently than <START>
+      --mod-before <END>   Match only files last modified before <END>
+  -a, --absolute           Print absolute paths. [default: relative to BASE]
+  -e, --errors             Show access errors (default is to ignore them)
+  -h, --help               Print help
+  -V, --version            Print version
 ```
 
 ## Installation
@@ -118,6 +120,36 @@ directory entry type fnord invalid or not supported on this platform
 possible values are: file, dir, link, fifo, socket, block, char
 ```
 
+You can limit your matches to entries that were last modified in a specific
+time frame by using `--mod-after` and `--mod-before`.
+
+```text
+dan@lauDANum:~/dev/softies/fine$ /bin/ls -l src
+total 20
+-rw-r--r-- 1 dan dan 3762 Jul 28 17:42 main.rs
+-rw-r--r-- 1 dan dan 4142 Jul 28 17:58 opt.rs
+-rw-r--r-- 1 dan dan 2047 Jul 28 17:56 times.rs
+-rw-r--r-- 1 dan dan 3671 Jul 27 23:01 types.rs
+dan@lauDANum:~/dev/softies/fine$ fine -d src *.rs --mod-after "2023-07-28 17:50"
+src/opt.rs
+src/times.rs
+```
+
+If you omit the time, it'll assume midnight; if you omit the day, it'll assume
+the current day. You can also use both to constrain your time interval at
+both ends; it'll warn you if you screw it up.
+
+```text
+dan@lauDANum:~/dev/softies/fine$ fine -d src *.rs --mod-before 15:00 --mod-after 15:30
+--mod-after must be earlier than --mod-before to get any results
+```
+
+(Time must be in 24-hour format. Dates can be in either `2021-01-27` ISO
+format, or `1/7/2021` North American format, but _not_ the `27/1/2021`
+European format; the latter isn't, in general, possible to disambiguate
+from the North American format, and you Europeans are smart enough to figure
+it out.)
+
 Match your pattern agains the entire path (instead of just the final
 element) with `-p`:
 
@@ -152,4 +184,4 @@ dan@lauDANum:~/dev/fine$ info find
 bash: info: command not found
 ```
 
-Great.
+See? Great.
