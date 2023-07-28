@@ -1,0 +1,21 @@
+[package]
+name = "fine"
+version = "0.4.0"
+description = """
+A more forgiving version of the `find` utility; it works just fine."""
+readme = "README.md"
+
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+bstr = "^1.6"
+clap = { version = "^4.3", features = ["derive"] }
+enum-iterator = "^1.4"
+globset = { version = "^0.4", default-features = false }
+regex = "^1.9"
+walkdir = "^2.3"

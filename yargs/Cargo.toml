@@ -1,0 +1,17 @@
+[package]
+name = "yargs"
+version = "0.3.1"
+description = "A friendlier xargs replacement."
+readme = "README.md"
+
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+bstr = "1.6.0"
+regex-chunker = "0.3.0"
+shell-escape = "0.1.5"

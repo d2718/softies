@@ -1,0 +1,20 @@
+[package]
+name = "zipper"
+version = "0.2.0"
+description = """
+Interleave the outputs of multiple commands."""
+readme = "README.md"
+
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+clap = { version = "4.3.17", features = ["derive", "wrap_help"] }
+regex-chunker = { version = "0.3.0", features = ["async"] }
+shlex = "1.1.0"
+tokio = { version = "1.29.1", features = ["macros", "rt-multi-thread", "process", "sync"] }
+tokio-stream = { version = "0.1.14", default-features = false }

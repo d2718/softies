@@ -1,0 +1,18 @@
+[package]
+name = "fresh"
+version = "0.4.2"
+
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+readme = "README.md"
+description = "A friendlier sed replacement."
+
+[dependencies]
+clap = { version = "^4.3", features = ["derive"] }
+regex = "^1.9"
+regex-chunker = "^0.3"
