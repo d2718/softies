@@ -1,5 +1,4 @@
 # zipper
-A command-line utility to interleave output.
 
 ```text
 Interleave the outputs of multiple commands.
@@ -20,11 +19,18 @@ Options:
   -t, --threads
           Use more threads
 
+  -H, --command-help
+          Print the command-line prefix options
+
+  -p, --paste [<SEP>]
+          Print each tuple on the same line, separated by <SEP> [default is \t], like paste(1)
+
   -h, --help
           Print help (see a summary with '-h')
 
   -V, --version
           Print version
+
 ```
 
 ## Installation
@@ -85,6 +91,20 @@ conservative
 798261
 3300000
 conservative
+```
+
+You can get paste(1)-like behavior with the `-p` option.
+
+```text
+$ zipper -p
+cat $CPU/scaling_cur_freq
+cat $CPU/scaling_max_freq
+cat $CPU/scaling_governor
+
+798242	3300000	conservative
+798276	3300000	conservative
+798230	3300000	conservative
+798242	3300000	conservative
 ```
 
 It will take any number of commands, and by default will iterate through

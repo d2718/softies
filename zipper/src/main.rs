@@ -1,11 +1,13 @@
 mod cmds;
+mod opt;
 
 use std::{error::Error, io::{stdin, stdout, BufRead, Write}};
 
-use clap::{Parser, ValueEnum};
+use clap::ValueEnum;
 use tokio::{runtime, sync::mpsc::Receiver, task::LocalSet};
 
 use cmds::{Cmd, Threading};
+use opt::Opts;
 
 #[cfg(unix)]
 static NEWLINE: &[u8] = &[10];
@@ -29,7 +31,7 @@ Options:
 /// Controls how zipper behaves when commands terminate after
 /// different amounts of output.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, ValueEnum)]
-enum Finished {
+pub enum Finished {
     /// Stop when first command terminates.
     #[default]
     Terminate,
@@ -37,20 +39,6 @@ enum Finished {
     Ignore,
     /// Insert blank lines for commands that have terminated.
     Blank,
-}
-
-#[derive(Debug, Parser)]
-#[command(author, version, about)]
-struct Cfg {
-    /// Specify behavior on command termination.
-    #[arg(short, long, value_enum, default_value_t = Finished::Terminate)]
-    exit: Finished,
-    /// Use more threads.
-    #[arg(short, long, default_value_t = false)]
-    threads: bool,
-    /// Print the command-line prefix options
-    #[arg(short = 'H', long = "command-help", default_value_t = false)]
-    commands: bool
 }
 
 /**
@@ -111,9 +99,59 @@ async fn read_loop(mut outputs: Vec<Receiver<Vec<u8>>>, finished: Finished) -> s
     Ok(())
 }
 
+/**
+Repeatedly iterate through the output channels of the commands.
+The outputs of the individual commands in each iteration will be
+separated by `sep`; the total output of each iteration will be
+separated by a newline.
+*/
+async fn paste_mode_read(
+    mut outputs: Vec<Receiver<Vec<u8>>>,
+    finished: Finished,
+    sep: &[u8],
+) -> std::io::Result<()> {
+    let mut buff: Vec<u8> = Vec::new();
+    let mut dones: Vec<bool> = vec![false; outputs.len()];
+    let exit_condition: Vec<bool> = vec![true; outputs.len()];
+    let n_outputs = outputs.len();
+
+    'writeloop: while &dones != &exit_condition {
+        for (n, rx) in outputs.iter_mut().enumerate() {
+            match rx.recv().await {
+                Some(v) => {
+                    buff.extend_from_slice(&v);
+                    if n + 1 < n_outputs {
+                        buff.extend_from_slice(sep);
+                    }
+                },
+                None => {
+                    dones[n] = true;
+                    match finished {
+                        Finished::Terminate => break 'writeloop,
+                        Finished::Ignore => { /* do nothing */ },
+                        Finished::Blank => {
+                            buff.push(b' ');
+                            if n + 1 < n_outputs {
+                                buff.extend_from_slice(sep);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        buff.extend_from_slice(NEWLINE);
+        let mut stdout = stdout().lock();
+        stdout.write_all(&buff)?;
+        stdout.flush()?;
+        buff.clear();
+    }
+
+    Ok(())
+}
+
 /// Spawn commands and interleave their output using tokio's default
 /// (multh-threaded) task scheduler.
-fn run_threaded(cmds: Vec<Cmd>, cfg: Cfg) -> Result<(), Box<dyn Error>> {
+fn run_threaded(cmds: Vec<Cmd>, opts: Opts) -> Result<(), Box<dyn Error>> {
     let rt = runtime::Builder::new_multi_thread()
         .enable_io()
         .build()?;
@@ -129,14 +167,18 @@ fn run_threaded(cmds: Vec<Cmd>, cfg: Cfg) -> Result<(), Box<dyn Error>> {
                 },
             }).collect();
 
-        read_loop(outputs, cfg.exit).await  
+        if let Some(ref sep) = opts.paste {
+            paste_mode_read(outputs, opts.exit, sep.as_bytes()).await
+        } else {
+            read_loop(outputs, opts.exit).await
+        }
     }).map_err(|e| e.into())
 }
 
 /// Spawn commands and interleave their output using tokio's single-threaded
 /// task scheduler. This does not guarantee strict single-threaded behavior.
 /// Even if it did, each command still needs to run in its own process.
-fn run_local(cmds: Vec<Cmd>, cfg: Cfg) -> Result<(), Box<dyn Error>> {
+fn run_local(cmds: Vec<Cmd>, opts: Opts) -> Result<(), Box<dyn Error>> {
     let rt = runtime::Builder::new_current_thread()
         .enable_io()
         .build()?;
@@ -155,22 +197,26 @@ fn run_local(cmds: Vec<Cmd>, cfg: Cfg) -> Result<(), Box<dyn Error>> {
                     },
                 }).collect();
 
-            read_loop(outputs, cfg.exit).await
+            if let Some(ref sep) = opts.paste {
+                paste_mode_read(outputs, opts.exit, sep.as_bytes()).await
+            } else {
+                read_loop(outputs, opts.exit).await
+            }
         }).await
     }).map_err(|e| e.into())
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let cfg = Cfg::parse();
-    if cfg.commands {
+    let opts = Opts::get()?;
+    if opts.commands {
         println!("{}", PREFIX_OPTION_HELP);
         std::process::exit(0);
     }
     let cmds = get_commands().unwrap();
 
-    if cfg.threads {
-        run_threaded(cmds, cfg)
+    if opts.threads {
+        run_threaded(cmds, opts)
     } else {
-        run_local(cmds, cfg)
+        run_local(cmds, opts)
     }
 }

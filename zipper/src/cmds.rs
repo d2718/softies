@@ -103,13 +103,18 @@ where
     if let Some(n) = opts.take {
         let mut chunker = chunker.take(n);
         while let Some(chunk) = chunker.next().await {
-            tx.send(chunk?).await?;
+            if tx.send(chunk?).await.is_err() {
+                break;
+            }
         }
     } else {
         while let Some(chunk) = chunker.next().await {
-            tx.send(chunk?).await?;
+            if tx.send(chunk?).await.is_err() {
+                break;
+            }
         }
     }
+
     Ok(())
 }
 
