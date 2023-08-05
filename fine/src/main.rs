@@ -53,13 +53,10 @@ fn check_match(opts: &Opts, ent: &DirEntry) -> Option<bool> {
 /// Walk the directory tree starting from `opts.base`, checking
 /// for and printing paths with matching filenames.
 fn walk_and_check(opts: &Opts) -> Result<(), Box<dyn Error>> {
-    let meta = std::fs::metadata(&opts.base).map_err(|e| format!(
-        "unable to read from \"{}\": {}", &opts.base.display(), &e
-    ))?;
+    let meta = std::fs::metadata(&opts.base)
+        .map_err(|e| format!("unable to read from \"{}\": {}", &opts.base.display(), &e))?;
     if !meta.is_dir() {
-        return Err(format!(
-            "\"{}\" is not a directory", &opts.base.display()
-        ).into());
+        return Err(format!("\"{}\" is not a directory", &opts.base.display()).into());
     }
 
     let ok_types = if opts.types.is_empty() {
@@ -67,14 +64,19 @@ fn walk_and_check(opts: &Opts) -> Result<(), Box<dyn Error>> {
     } else {
         Some(opts.types.as_slice())
     };
-    
-    for res in WalkDir::new(&opts.base).follow_links(false) {
+
+    let mut walker = WalkDir::new(&opts.base).follow_links(false);
+    if let Some(depth) = opts.depth {
+        walker = walker.max_depth(depth);
+    }
+
+    for res in walker {
         let ent = match (res, opts.errors) {
             (Ok(ent), _) => ent,
             (Err(e), true) => {
                 eprintln!("{}", &e);
                 continue;
-            },
+            }
             (Err(_), false) => continue,
         };
 
@@ -90,7 +92,7 @@ fn walk_and_check(opts: &Opts) -> Result<(), Box<dyn Error>> {
                 (Err(e), true) => {
                     eprintln!("{}", &e);
                     continue;
-                },
+                }
                 (Err(_), false) => continue,
             };
             let modtime = match (meta.modified(), opts.errors) {
@@ -98,10 +100,9 @@ fn walk_and_check(opts: &Opts) -> Result<(), Box<dyn Error>> {
                 (Err(e), true) => {
                     eprintln!("{}", &e);
                     continue;
-                },
+                }
                 (Err(_), false) => continue,
             };
-            
 
             if let Some(t) = opts.mod_after {
                 if modtime <= t {
@@ -115,12 +116,9 @@ fn walk_and_check(opts: &Opts) -> Result<(), Box<dyn Error>> {
             }
         }
 
-        match (
-            check_match(opts, &ent).unwrap_or_default(),
-            opts.absolute,
-         ) {
+        match (check_match(opts, &ent).unwrap_or_default(), opts.absolute) {
             (true, false) => print_relative(ent.path()),
-            (true, true)  => print_absolute(ent.path()),
+            (true, true) => print_absolute(ent.path()),
             _ => continue,
         };
     }

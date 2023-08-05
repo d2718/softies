@@ -1,6 +1,6 @@
 [package]
 name = "fine"
-version = "0.5.0"
+version = "0.6.0"
 description = """
 A more forgiving version of the `find` utility; it works just fine."""
 readme = "README.md"

@@ -9,7 +9,8 @@ Arguments:
   [PATTERN]...  The pattern(s) to match file paths against
 
 Options:
-  -d, --dir <BASE>         Base directory in which to search [default: .]
+  -b, --base <BASE>        Base directory in which to begin search [default: .]
+  -d, --depth <DEPTH>      Limit the search to this depth below <BASE>
   -r, --regex              Use regex (instead of glob) matching
   -f, --full               Match any part of the path, not just the filename
   -t, --type <TYPE>        Match only against specified types [default is all]
@@ -46,15 +47,22 @@ dan@lauDANum:~/dev/fine$ fine *.rs Cargo.*
 ./Cargo.lock
 ```
 
-Specify a specific base directory with `-d`:
+Specify a specific base directory with `-b`:
 
 ```text
-dan@lauDANum:~/dev/fine$ fine -d /usr/share/fonts terminus*
+dan@lauDANum:~/dev/fine$ fine -b /usr/share/fonts terminus*
 /usr/share/fonts/opentype/terminus
 /usr/share/fonts/opentype/terminus/terminus-bold-oblique.otb
 /usr/share/fonts/opentype/terminus/terminus-bold.otb
 /usr/share/fonts/opentype/terminus/terminus-oblique.otb
 /usr/share/fonts/opentype/terminus/terminus-normal.otb
+```
+
+Limit the depth of your search with `-d`:
+
+```text
+dan@lauDANum:~/dev/fine$ fine -b /usr/share/fonts -d 2 terminus*
+/usr/share/fonts/opentype/terminus
 ```
 
 By default, `fine` prints paths relative to the specified base directory.
@@ -69,7 +77,7 @@ dan@lauDANum:~/dev/fine$ fine *.rs -a
 Specify regex patterns instead of globs with `-r`:
 
 ```text
-dan@lauDANum:~/dev/fine$ fine -d target/debug -r 'clap_.*a[0-2]'
+dan@lauDANum:~/dev/fine$ fine -b target/debug -r 'clap_.*a[0-2]'
 target/debug/deps/clap_lex-a87e359c0a25297d.d
 target/debug/deps/clap_builder-8a1806fd13db2c47.d
 target/debug/deps/libclap_lex-a87e359c0a25297d.rmeta
@@ -82,7 +90,7 @@ target/debug/.fingerprint/clap_builder-8a1806fd13db2c47
 Match only against certain types of directory entries with `-t`:
 
 ```text
-dan@lauDANum:~/dev/fine$ target/debug/fine -d /dev -t link '*'
+dan@lauDANum:~/dev/fine$ target/debug/fine -b /dev -t link '*'
 /dev/stderr
 /dev/stdout
 /dev/stdin
@@ -92,7 +100,7 @@ dan@lauDANum:~/dev/fine$ target/debug/fine -d /dev -t link '*'
 You can use `-t` more than once to specify multiple types:
 
 ```text
-dan@lauDANum:~/dev/fine$ target/debug/fine -d /dev -t dir -t link '*'
+dan@lauDANum:~/dev/fine$ target/debug/fine -b /dev -t dir -t link '*'
 /dev
 /dev/shm
 /dev/pts
@@ -130,7 +138,7 @@ total 20
 -rw-r--r-- 1 dan dan 4142 Jul 28 17:58 opt.rs
 -rw-r--r-- 1 dan dan 2047 Jul 28 17:56 times.rs
 -rw-r--r-- 1 dan dan 3671 Jul 27 23:01 types.rs
-dan@lauDANum:~/dev/softies/fine$ fine -d src *.rs --mod-after "2023-07-28 17:50"
+dan@lauDANum:~/dev/softies/fine$ fine -b src *.rs --mod-after "2023-07-28 17:50"
 src/opt.rs
 src/times.rs
 ```
@@ -140,7 +148,7 @@ the current day. You can also use both to constrain your time interval at
 both ends; it'll warn you if you screw it up.
 
 ```text
-dan@lauDANum:~/dev/softies/fine$ fine -d src *.rs --mod-before 15:00 --mod-after 15:30
+dan@lauDANum:~/dev/softies/fine$ fine -b src *.rs --mod-before 15:00 --mod-after 15:30
 --mod-after must be earlier than --mod-before to get any results
 ```
 
@@ -154,9 +162,9 @@ Match your pattern agains the entire path (instead of just the final
 element) with `-p`:
 
 ```text
-dan@lauDANum:~/dev/fine$ fine -d ~/.config *helix*
+dan@lauDANum:~/dev/fine$ fine -b ~/.config *helix*
 /home/dan/.config/helix
-dan@lauDANum:~/dev/fine$ fine -d ~/.config -p *helix*
+dan@lauDANum:~/dev/fine$ fine -b ~/.config -p *helix*
 /home/dan/.config/helix
 /home/dan/.config/helix/themes
 /home/dan/.config/helix/themes/zzd_rose_pine.toml

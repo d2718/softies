@@ -1,11 +1,7 @@
 /**!
 Argument parsing and configutation.
 */
-use std::{
-    convert::TryFrom,
-    path::PathBuf,
-    time::SystemTime,
-};
+use std::{convert::TryFrom, path::PathBuf, time::SystemTime};
 
 use clap::Parser;
 use globset::Glob;
@@ -17,13 +13,16 @@ use crate::{times, types::*};
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
 struct OptArgs {
-    /// Base directory in which to search.
-    #[arg(short = 'd', long = "dir",
-        default_value_t = String::from("."))]
-    base: String,
-
     /// The pattern(s) to match file paths against.
     pattern: Vec<String>,
+
+    /// Base directory in which to begin search.
+    #[arg(short, long, default_value_t = String::from("."))]
+    base: String,
+
+    /// Limit the search to this depth below <BASE>.
+    #[arg(short, long)]
+    depth: Option<usize>,
 
     /// Use regex (instead of glob) matching.
     #[arg(short, long, default_value_t = false)]
@@ -62,6 +61,8 @@ pub struct Opts {
     pub patterns: RegexSet,
     /// Base directory from which to start searching.
     pub base: PathBuf,
+    /// Limit the search to this depth below the base directory.
+    pub depth: Option<usize>,
     /// Whether to display aboslute (or relative) path names.
     pub absolute: bool,
     /// Whether to match on _any_ part of the path (not just
@@ -104,12 +105,15 @@ impl Opts {
         };
 
         let patterns = RegexSet::new(&oa_strs).map_err(|e| format!("{}", &e))?;
-        let types = oa.types.iter()
+        let types = oa
+            .types
+            .iter()
             .map(|s| {
                 let r = EType::try_from(s.as_str());
                 r
-            }).collect::<Result<Vec<_>, _>>()?;
-        
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
         let mod_after = match oa.mod_after {
             None => None,
             Some(timestamp) => Some(times::parse_time(&timestamp)?),
@@ -120,12 +124,15 @@ impl Opts {
         };
         if let (Some(a), Some(b)) = (mod_after, mod_before) {
             if a >= b {
-                return Err("--mod-after must be earlier than --mod-before to get any results".into());
+                return Err(
+                    "--mod-after must be earlier than --mod-before to get any results".into(),
+                );
             }
         }
 
         opts.patterns = patterns;
         opts.base = PathBuf::from(oa.base);
+        opts.depth = oa.depth;
         opts.absolute = oa.absolute;
         opts.full = oa.full;
         opts.errors = oa.errors;
